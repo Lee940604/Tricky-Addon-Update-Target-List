@@ -1,3 +1,6 @@
+import { applyRippleEffect } from './main.js';
+
+
 const languageButton = document.querySelector('.language-button');
 const languageMenu = document.querySelector('.language-menu');
 const languageOptions = document.querySelectorAll('.language-option');
@@ -152,4 +155,5 @@ async function generateLanguageMenu() {
         button.textContent = name;
         languageMenu.appendChild(button);
     });
+    applyRippleEffect();
 }
