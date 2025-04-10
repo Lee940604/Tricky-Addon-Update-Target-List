@@ -42,10 +42,15 @@ document.getElementById("deselect-unnecessary").addEventListener("click", async 
     try {
         const excludeList = await fetch("https://raw.githubusercontent.com/KOWX712/Tricky-Addon-Update-Target-List/main/more-exclude.json")
             .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 return response.json();
+            })
+            .catch(async () => {
+                return fetch("https://raw.gitmirror.com/KOWX712/Tricky-Addon-Update-Target-List/main/more-exclude.json")
+                    .then(response => {
+                        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                        return response.json();
+                    });
             })
             .then(data => {
                 return data.data
@@ -136,7 +141,7 @@ export async function setupSystemAppMenu() {
         currentSystemAppListContent.innerHTML = "";
         try {
             const systemAppList = await execCommand(`[ -f "/data/adb/tricky_store/system_app" ] && cat "/data/adb/tricky_store/system_app" | sed '/^$/d' || echo "false"`);
-            if (systemAppList.includes("false")) {
+            if (systemAppList.trim() === 'false' || systemAppList.trim() === '') {
                 currentSystemAppList.style.display = "none";
             } else {
                 systemAppList.split("\n").forEach(app => {
@@ -191,7 +196,7 @@ async function setKeybox(content) {
 }
 
 // Function to replace aosp kb
-export async function aospkb() {
+document.getElementById("aospkb").addEventListener("click", async () => {
     const source = await execCommand(`xxd -r -p ${basePath}/common/.default | base64 -d`);
     const result = await setKeybox(source);
     if (result) {
@@ -200,40 +205,45 @@ export async function aospkb() {
     } else {
         showPrompt("prompt.key_set_error", false);
     }
-}
+});
 
 // Function to replace valid kb
 document.getElementById("validkb").addEventListener("click", async () => {
     fetch("https://raw.githubusercontent.com/KOWX712/Tricky-Addon-Update-Target-List/main/.extra")
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.text();
-    })
-    .then(async data => {
-        if (!data.trim()) {
-            await aospkb();
-            showPrompt("prompt.no_valid_fallback", false);
-            return;
-        }
-        try {
-            const hexBytes = new Uint8Array(data.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
-            const decodedHex = new TextDecoder().decode(hexBytes);
-            const source = atob(decodedHex);
-            const result = await setKeybox(source);
-            if (result) {
-                showPrompt("prompt.valid_key_set");
-            } else {
-                throw new Error("Failed to copy valid keybox");
+        .then(response => {
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            return response.text();
+        })
+        .catch(async () => {
+            return fetch("https://raw.gitmirror.com/KOWX712/Tricky-Addon-Update-Target-List/main/.extra")
+                .then(response => {
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    return response.text();
+                });
+        })
+        .then(async data => {
+            if (!data.trim()) {
+                await aospkb();
+                showPrompt("prompt.no_valid_fallback", false);
+                return;
             }
-        } catch (error) {
-            throw new Error("Failed to decode keybox data");
-        }
-    })
-    .catch(async error => {
-        showPrompt("prompt.no_internet", false);
-    });
+            try {
+                const hexBytes = new Uint8Array(data.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+                const decodedHex = new TextDecoder().decode(hexBytes);
+                const source = atob(decodedHex);
+                const result = await setKeybox(source);
+                if (result) {
+                    showPrompt("prompt.valid_key_set");
+                } else {
+                    throw new Error("Failed to copy valid keybox");
+                }
+            } catch (error) {
+                throw new Error("Failed to decode keybox data");
+            }
+        })
+        .catch(async error => {
+            showPrompt("prompt.no_internet", false);
+        });
 });
 
 // File selector
